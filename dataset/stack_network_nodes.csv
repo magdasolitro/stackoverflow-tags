@@ -17,7 +17,6 @@ reactjs,3,59.03
 mysql,6,165.43
 .net,2,75.08
 react-native,3,13.61
-spring-boot,8,12.37
 apache-spark,10,11.04
 sql-server,2,64.62
 node.js,3,117.36
@@ -44,14 +43,12 @@ bash,5,23.91
 linux,5,108.54
 angular2,7,18.79
 typescript,7,17.53
-agile,12,12.22
 android-studio,4,14.79
 docker,9,22.85
 osx,4,12.58
 machine-learning,1,44.21
 windows,5,19.71
 ubuntu,5,11.98
-vue.js,6,8.38
 r,1,52.7
 go,9,24.84
 visual-studio,2,18.13
@@ -61,8 +58,6 @@ unix,5,15.67
 eclipse,8,11.39
 shell,5,11.63
 haskell,10,11.18
-api,8,8.61
 regex,13,9.46
 perl,13,19.38
-cloud,9,10.66
 matlab,1,27.21

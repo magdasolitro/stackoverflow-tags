@@ -43,3 +43,6 @@ if __name__ == "__main__":
             else:
                 i += 1
         print(str(i) + " edges discarded.")
+
+    new_nodes_path2 = "/Users/magdalenasolitro/Desktop/AI&CS MSc. UniUD/Advanced Data " \
+                "Science/stackoverflow_project/dataset/new_stack_network_nodes2.csv"
