@@ -1,0 +1,200 @@
+---
+title: "stackoverflow tags"
+author: "Magdalena Solitro"
+date: '2022-07-14'
+output: html_document
+---
+
+```{r setup, include=F, warning=F, message=F}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r preliminaries, include=F, warning=F, message=F}
+library(tidyverse)
+library(tidygraph)
+library(ggraph)
+library(ggplot2)
+library(readr)
+library(igraph)
+library(corrplot)
+
+setwd("/Users/magdalenasolitro/Desktop/AI&CS MSc. UniUD/Advanced Data Science/stackoverflow_project")
+
+# functions definition
+similarity = function(g, type = "cosine", mode = "col" ) {
+	A = as_adjacency_matrix(g, attr = "weight", sparse = FALSE)
+	if (mode == "row") {A = t(A)}
+	if (type == "cosine") {
+		euclidean = function(x) {sqrt(x %*% x)}
+		d = apply(A, 2, euclidean)
+		D = diag(1/d)
+		S = D %*% t(A) %*% A %*% D
+	}
+	if (type == "pearson") {
+		S = cor(A)
+	}
+	return(S)
+}
+
+shannon = function(p) {
+	x = p * log2(p)
+	x = replace(x, is.nan(x), 0)
+	return(-sum(x))
+}
+
+simpson = function(p) {
+	x = 1 - sum(p * p)
+	return(x)
+}
+
+rao = function(p, D) {
+	x = diag(p) %*% D %*% diag(p)
+	return(sum(c(x)))
+}
+
+
+heterogeneity = function(g, D, mode = "col") {
+	A = as_adjacency_matrix(g, attr = "weight", sparse = FALSE)
+	if (mode == "col") {
+		A = A %*% diag(1/colSums(A))
+		dim = 2
+	} else {
+		A = diag(1/rowSums(A)) %*% A
+		dim = 1
+	}
+	return(list(shannon = apply(A, dim, shannon),
+				simpson = apply(A, dim, simpson),
+				rao = apply(A, dim, rao, D)))
+}
+
+# generate graph
+edges_path = "dataset/stack_network_links.csv"
+nodes_path = "dataset/stack_network_nodes.csv"
+
+edges = read_csv(edges_path)
+nodes = read_csv(nodes_path)[-2]
+
+graph = tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
+
+```
+
+## A network of tags used in StackOverflow
+...
+
+```{r centrality, echo=FALSE}
+
+# degree
+deg = degree(graph, v = V(graph), mode = "all", loops = FALSE, 
+			 normalized = FALSE)
+
+# betweenness
+betweenness = betweenness(graph)
+
+# katz centrality
+A = as_adjacency_matrix(graph)
+eig = eigen(A)$values
+r = max(abs(eig))
+alpha = 0.85 / r
+katz = alpha_centrality(graph, alpha = alpha, exo = 1)
+
+# plot graph
+ggraph(graph, layout = 'kk') +
+	geom_edge_link(aes(edge_alpha = value)) +
+	geom_node_point(aes(size = deg, colour = betweenness)) +
+	geom_node_label(aes(label = nodes$name), label.size = 0.25, repel = TRUE) +
+	theme_void()
+```
+
+```{r expected_flow, echo=FALSE}
+n_nodes = vcount(graph)
+
+F = matrix(scan("dataset/flows.txt", what = numeric(0), sep=","),
+		   nrow = n_nodes, ncol = n_nodes)
+
+tag = scan("dataset/tags_names.txt", what = character(0), sep="\n")
+
+out_flow = rowSums(F)
+names(out_flow) = tag
+
+in_flow = colSums(F)
+names(in_flow) = tag
+
+flows = tibble(tag = tag, in_flow = in_flow, out_flow = out_flow) %>%
+	mutate(id = row_number()) %>%
+	select(id, everything())
+
+# normalize by expected flows 
+R = diag(rowSums(F))
+C = diag(colSums(F))
+n = sum(diag(C))
+O = matrix(1, nrow = n_nodes, ncol = n_nodes)
+
+# expected flow
+E = (R %*% O %*% C) / n
+# normalized flows (X-test)
+C = (F - E) / sqrt(E) 
+# normalized flows (G-test)
+D = F * log(F / E)
+
+g = graph_from_adjacency_matrix(C, mode = "plus", weighted = TRUE)
+V(g)$name = 1:vcount(g)
+
+chi = as_tibble(as_data_frame(graph)) %>%
+	mutate(from = as.integer(from), to = as.integer(to)) %>%
+	left_join(flows, by = c("from" = "id")) %>%
+	left_join(flows, by = c("to" = "id")) %>%
+	select(from, to, discipline.from = discipline.x, discipline.to = discipline.y,
+		   size.from = size.x, size.to = size.y, weight)
+
+# top-10 different discipline pairs
+filter(chi, from != to) %>%
+	arrange(desc(weight)) %>%
+	head(10)
+```
+
+```{r communities}
+# COMMUNITY DETECTION
+groups = cluster_walktrap(graph)
+mod = modularity(groups)
+
+# add group column to nodes tibble
+nodes = nodes %>% add_column(group = as.integer(membership(groups)))
+```
+
+```{r communities_plot}
+community = as.factor(membership(groups))
+
+ggraph(graph, layout = 'kk') +
+	geom_edge_link() +
+	geom_node_point(aes(size = 2, colour = community)) +
+	geom_node_label(aes(label = nodes$name), label.size = 0.25, repel = TRUE) +
+	scale_color_brewer(palette = "Paired")
+```
+
+```{r histogram}
+
+# group histogram
+group_sizes <-
+	nodes %>%
+	group_by(group) %>%
+	count()
+
+# TODO: group histogram!
+ggplot(group_sizes, aes(x=group, y=n)) + 
+	geom_col()
+
+```
+
+```{r hierachical_clust}
+# use hierarchical clustering to group tags into macroareas
+# distance object
+d = as.dist(D)
+
+# average-linkage clustering method
+hc = hclust(d, method = "average")
+
+# plot dendrogram
+plot(hc)
+
+
+```
