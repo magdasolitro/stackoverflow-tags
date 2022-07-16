@@ -2,7 +2,9 @@
 title: "stackoverflow tags"
 author: "Magdalena Solitro"
 date: '2022-07-14'
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=F, warning=F, message=F}
@@ -17,9 +19,14 @@ library(ggplot2)
 library(readr)
 library(igraph)
 library(corrplot)
+library(lpSolve)
+library(lpSolveAPI)
 
 setwd("/Users/magdalenasolitro/Desktop/AI&CS MSc. UniUD/Advanced Data Science/stackoverflow_project")
+```
 
+
+```{r function_def}
 # functions definition
 similarity = function(g, type = "cosine", mode = "col" ) {
 	A = as_adjacency_matrix(g, attr = "weight", sparse = FALSE)
@@ -67,19 +74,93 @@ heterogeneity = function(g, D, mode = "col") {
 				rao = apply(A, dim, rao, D)))
 }
 
-# generate graph
+regularify = function (g) {
+  n = vcount(g)
+  m = ecount(g)
+  E = get.edges(g, E(g))
+  B = matrix(0, nrow = n, ncol = m)
+  # build incidence matrix
+  for (i in 1:m) {
+    B[E[i,1], i] = 1
+    B[E[i,2], i] = 1
+  }  
+  # objective function
+  obj = rep(0, m + 1)
+  # constraint matrix
+  con = cbind(B, rep(-1, n))
+  # direction of constraints
+  dir = rep("=", n)
+  # right hand side terms
+  rhs = -degree(g)
+  # solve the LP problem
+  sol = lp("max", obj, con, dir, rhs)
+  # get solution
+  if (sol$status == 0) {
+    s = sol$solution
+    # weights
+    w = s[1:m] + 1
+    # weighted degree
+    d = s[m+1]
+  }
+  # return the solution
+  if (sol$status == 0) {
+    return(list(weights = w, degree = d)) 
+  }
+  else {
+    return(NULL)   
+  }
+}
+
+power = function(A, t) {
+  n = dim(A)[1];
+  # x_2k
+  x0 = rep(0, n);
+  # x_2k+1
+  x1 = rep(1, n);
+  # x_2k+2
+  x2 = rep(1, n);
+  diff = 1
+  eps = 1/10^t;
+  iter = 0;
+  while (diff > eps) {
+    x0 = x1;
+    x1 = x2;
+    x2 = (1/x2) %*% A;
+    diff = sum(abs(x2 - x0));
+    iter = iter + 1;
+  } 
+  # it holds now: alpha x2 = (1/x2) A
+  alpha = ((1/x2) %*% A[,1]) / x2[1];
+  # hence sqrt(alpha) * x2 = (1/(sqrt(alpha) * x2)) A
+  x2 = sqrt(alpha) %*% x2;
+  return(list(vector = as.vector(x2), iter = iter))
+} 
+
+```
+
+```{r graph}
+# load dataset graph
 edges_path = "dataset/stack_network_links.csv"
 nodes_path = "dataset/stack_network_nodes.csv"
 
 edges = read_csv(edges_path)
 nodes = read_csv(nodes_path)[-2]
 
+# generate graph
 graph = tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
 
 ```
 
 ## A network of tags used in StackOverflow
-...
+The network we analyse represents the usage of tags on StackOverflow, a popular forum for computer programmers. Tags are keywords that help users to find questions and answers related to a specific technology or topic. 
+Our dataset is structured in two files:
+
+** *stack_network_nodes.csv* is a csv file containing information about the nodes of the network. Each node is associated to a specific tag.
+
+** *stack_network_links.csv* is a csv file containing information about the links of the network. An edge between two nodes means that the those tags can be found in the same post.
+The weight of the edge is a measure of how often those tags are used together. 
+
+The goal of my analysis is to investigate the relationship 
 
 ```{r centrality, echo=FALSE}
 
@@ -105,7 +186,7 @@ ggraph(graph, layout = 'kk') +
 	theme_void()
 ```
 
-```{r expected_flow, echo=FALSE}
+```{r exp_flow, echo=FALSE}
 n_nodes = vcount(graph)
 
 F = matrix(scan("dataset/flows.txt", what = numeric(0), sep=","),
@@ -133,23 +214,27 @@ O = matrix(1, nrow = n_nodes, ncol = n_nodes)
 E = (R %*% O %*% C) / n
 # normalized flows (X-test)
 C = (F - E) / sqrt(E) 
-# normalized flows (G-test)
-D = F * log(F / E)
 
 g = graph_from_adjacency_matrix(C, mode = "plus", weighted = TRUE)
 V(g)$name = 1:vcount(g)
 
-chi = as_tibble(as_data_frame(graph)) %>%
-	mutate(from = as.integer(from), to = as.integer(to)) %>%
+chi = as_tibble(as_data_frame(g)) %>%
 	left_join(flows, by = c("from" = "id")) %>%
 	left_join(flows, by = c("to" = "id")) %>%
-	select(from, to, discipline.from = discipline.x, discipline.to = discipline.y,
-		   size.from = size.x, size.to = size.y, weight)
+	select(from, to, weight, tag.x, tag.y)
 
 # top-10 different discipline pairs
 filter(chi, from != to) %>%
 	arrange(desc(weight)) %>%
-	head(10)
+	head(5)
+```
+
+```{r exp_flow2}
+
+filter(chi, from != to) %>% 
+  arrange(weight) %>%
+  head(5)
+
 ```
 
 ```{r communities}
@@ -181,20 +266,38 @@ group_sizes <-
 
 # TODO: group histogram!
 ggplot(group_sizes, aes(x=group, y=n)) + 
-	geom_col()
+	geom_col(data=group_sizes, aes(x=group, y=n))
 
 ```
 
 ```{r hierachical_clust}
 # use hierarchical clustering to group tags into macroareas
+
+# hierarchical clustering
+A = as_adjacency_matrix(graph, sparse=FALSE)
+
+# cosine similarity
+euclidean = function(x) {sqrt(x %*% x)}
+d = apply(A, 2, euclidean)
+D = diag(1/d)
+S = D %*% t(A) %*% A %*% D
+
+# distance matrix
+D = 1-S
+
 # distance object
 d = as.dist(D)
 
 # average-linkage clustering method
 hc = hclust(d, method = "average")
 
-# plot dendrogram
 plot(hc)
+```
 
+```{r power}
+regularify(graph)
+I = diag(0.15, n_nodes)
+(AI = A + I)
 
+power(AI, 6)
 ```
