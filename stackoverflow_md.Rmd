@@ -160,7 +160,7 @@ Our dataset is structured in two files:
 ** *stack_network_links.csv* is a csv file containing information about the links of the network. An edge between two nodes means that the those tags can be found in the same post.
 The weight of the edge is a measure of how often those tags are used together. 
 
-The goal of my analysis is to investigate the relationship 
+The goal of my analysis is to deduce information about the technologies represented by tags based on how they relate to each other in the network. 
 
 ```{r centrality, echo=FALSE}
 
