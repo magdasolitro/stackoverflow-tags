@@ -1,17 +1,21 @@
 ---
-title: "stackoverflow tags"
+title: "StackOverflow Tags Network"
 author: "Magdalena Solitro"
 date: '2022-07-14'
 output:
-  pdf_document: default
-  html_document: default
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+    css: 'scrollable.css'
+editor_options:
+  chunck_output_type: console
 ---
 
-```{r setup, include=F, warning=F, message=F}
+```{r setup, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-```{r preliminaries, include=F, warning=F, message=F}
+```{r preliminaries, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(tidygraph)
 library(ggraph)
@@ -21,8 +25,12 @@ library(igraph)
 library(corrplot)
 library(lpSolve)
 library(lpSolveAPI)
+library(knitr)
+library(kableExtra)
+library(huxtable)
 
-setwd("/Users/magdalenasolitro/Desktop/AI&CS MSc. UniUD/Advanced Data Science/stackoverflow_project")
+setwd("/Users/magda/Desktop/ADS/stackoverflow-tags/")
+
 ```
 
 
@@ -138,7 +146,7 @@ power = function(A, t) {
 
 ```
 
-```{r graph}
+```{r graph, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
 # load dataset graph
 edges_path = "dataset/stack_network_links.csv"
 nodes_path = "dataset/stack_network_nodes.csv"
@@ -153,20 +161,22 @@ graph = tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
 
 ## A network of tags used in StackOverflow
 The network we analyse represents the usage of tags on StackOverflow, a popular forum for computer programmers. Tags are keywords that help users to find questions and answers related to a specific technology or topic. 
+
 Our dataset is structured in two files:
 
-** *stack_network_nodes.csv* is a csv file containing information about the nodes of the network. Each node is associated to a specific tag.
+- *stack_network_nodes.csv* is a csv file containing information about the nodes of the network. Each node is associated to a specific tag.
 
-** *stack_network_links.csv* is a csv file containing information about the links of the network. An edge between two nodes means that the those tags can be found in the same post.
-The weight of the edge is a measure of how often those tags are used together. 
+- *stack_network_links.csv* is a csv file containing information about the links of the network. An edge between two nodes means that the those tags can be found in the same post. The weight of the edge is a measure of how often those tags are used together. 
 
 The goal of my analysis is to deduce information about the technologies represented by tags based on how they relate to each other in the network. 
 
-```{r centrality, echo=FALSE}
+## Centrality measures
+I used three different centrality measures: degree centrality, betweenness centrality, and Katz centrality.
+
+```{r centrality, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
 # degree
-deg = degree(graph, v = V(graph), mode = "all", loops = FALSE, 
-			 normalized = FALSE)
+str = strength(graph, v = V(graph), mode = "all", loops = FALSE)
 
 # betweenness
 betweenness = betweenness(graph)
@@ -181,12 +191,15 @@ katz = alpha_centrality(graph, alpha = alpha, exo = 1)
 # plot graph
 ggraph(graph, layout = 'kk') +
 	geom_edge_link(aes(edge_alpha = value)) +
-	geom_node_point(aes(size = deg, colour = betweenness)) +
+	geom_node_point(aes(size = katz, colour = betweenness)) +
 	geom_node_label(aes(label = nodes$name), label.size = 0.25, repel = TRUE) +
 	theme_void()
 ```
 
-```{r exp_flow, echo=FALSE}
+## Comparison with the expected flow
+An alternative way of evaluating how meaningful is a link between two nodes is two compare flow of the network with the flow that can be found in a network with the same nodes, where the links are distributed randomly.
+
+```{r exp_flow, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 n_nodes = vcount(graph)
 
 F = matrix(scan("dataset/flows.txt", what = numeric(0), sep=","),
@@ -223,54 +236,125 @@ chi = as_tibble(as_data_frame(g)) %>%
 	left_join(flows, by = c("to" = "id")) %>%
 	select(from, to, weight, tag.x, tag.y)
 
-# top-10 different discipline pairs
-filter(chi, from != to) %>%
+# top 5 different discipline pairs
+top = filter(chi, from != to) %>%
 	arrange(desc(weight)) %>%
 	head(5)
-```
 
-```{r exp_flow2}
-
-filter(chi, from != to) %>% 
+# bottom 5 different discipline pairs
+btm = filter(chi, from != to) %>% 
   arrange(weight) %>%
   head(5)
 
+top %>%
+    kbl(align="c", caption='Top 5 Entries') %>%
+    kable_paper(bootstrap_options = c("striped","condensed"))
+
+btm %>%
+    kbl(align="c", caption='Bottom 5 Entries') %>%
+    kable_paper(bootstrap_options = c("striped","condensed"))
+
 ```
 
-```{r communities}
+## Community detection
+Through community detection techniques, we can identify groups of tags that are more strongly connected to each other...
+
+```{r communities, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 # COMMUNITY DETECTION
 groups = cluster_walktrap(graph)
 mod = modularity(groups)
 
 # add group column to nodes tibble
 nodes = nodes %>% add_column(group = as.integer(membership(groups)))
-```
 
-```{r communities_plot}
 community = as.factor(membership(groups))
 
-ggraph(graph, layout = 'kk') +
+ggraph(graph, layout = 'fr') +
 	geom_edge_link() +
-	geom_node_point(aes(size = 2, colour = community)) +
+	geom_node_point(aes(size = 1, colour = community)) +
 	geom_node_label(aes(label = nodes$name), label.size = 0.25, repel = TRUE) +
 	scale_color_brewer(palette = "Paired")
 ```
 
-```{r histogram}
+## Meaning of communities
+... and we realise that *nodes in the same group tend to represent technologies of similar domain*.
 
-# group histogram
+```{r groups, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+
+options(knitr.table.format = "html")
+
+group3 <-
+	nodes %>%
+	group_by(group) %>%
+    as.data.frame() %>%
+    filter(group==3) %>%
+    select(name, group)
+
+group7 <-
+	nodes %>%
+	group_by(group) %>%
+    as.data.frame() %>%
+    filter(group==7) %>%
+    select(name, group)
+
+group8 <-
+	nodes %>%
+	group_by(group) %>%
+    as.data.frame() %>%
+    filter(group==8) %>%
+    select(name, group)
+```
+
+```{r group_display, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+group3 %>%
+    kbl(align="c") %>%
+    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
+    kable_styling(position = "center")
+
+group7 %>%
+    kbl(align="c", caption='Angular2 is based on TypeScript') %>%
+    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
+    kable_styling(position = "center")
+
+group8 %>%
+    kbl(align="c", caption='Apple Development') %>%
+    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
+    kable_styling(position = "right")
+
+```
+
+<!-- ##### Machine Learning applications -->
+<!-- Group 3 seems to comprehend technologies that are commonly used for ML applications. -->
+<!-- ##### Two similar languages -->
+<!-- **Angular 2** is based on **TypeScript**, thus it's easy to imagine why they are often found in the same post. -->
+<!-- ##### Apple development -->
+<!-- All of these technologies are used for the development of Apple products: **Objective-C** has been for a long time the primary programming language for writing software for **OS X** and **iOS**, while more recently **Swift** was introduced as an improvement of Objective-C. -->
+
+## Plotting communities
+We can plot communities with a histogram to compare the cardinality of each group.
+
+```{r histogram, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+
+# group together nodes that belong to the same group and count elements
 group_sizes <-
 	nodes %>%
 	group_by(group) %>%
 	count()
 
-# TODO: group histogram!
+# plot histogram
 ggplot(group_sizes, aes(x=group, y=n)) + 
 	geom_col(data=group_sizes, aes(x=group, y=n))
-
 ```
 
-```{r hierachical_clust}
+## Hierarchical Clustering
+A more advanced way of grouping together tags based on their domain is Hierarchical Clustering, which establishes a hierarchy of nodes based on the similarity score between them.
+
+For example:
+
+- 50 is Ubuntu and 56 is Unix
+- 8 is C and 9 is C++
+
+```{r hierachical_clust, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 # use hierarchical clustering to group tags into macroareas
 
 # hierarchical clustering
@@ -294,7 +378,11 @@ hc = hclust(d, method = "average")
 plot(hc)
 ```
 
-```{r power}
+
+## Power measures
+
+We use 
+```{r power, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 regularify(graph)
 I = diag(0.15, n_nodes)
 (AI = A + I)
