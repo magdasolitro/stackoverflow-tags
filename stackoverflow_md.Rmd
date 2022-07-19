@@ -167,14 +167,21 @@ Our dataset is structured in two files:
 
 - *stack_network_links.csv* is a csv file containing information about the links of the network. An edge between two nodes means that the those tags can be found in the same post. The weight of the edge is a measure of how often those tags are used together. 
 
-The goal of my analysis is to deduce information about the technologies represented by tags based on how they relate to each other in the network. 
+The goal of my analysis is to deduce information about the technologies represented by tags based on how they relate to each other in the network. More precisely, we would like to see if it is possible to ...
+
+## Centrality
+Centrality measures are a way of determining the "importance" of a node in the network based on how it connects to its neighbours.
 
 ## Centrality measures
 I used three different centrality measures: degree centrality, betweenness centrality, and Katz centrality.
 
 ```{r centrality, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
+<<<<<<< HEAD
+# weighted degree
+=======
 # degree
+>>>>>>> 2b297abe08918d8e5f299da1ec5b0dfa3d6253de
 str = strength(graph, v = V(graph), mode = "all", loops = FALSE)
 
 # betweenness
@@ -190,7 +197,11 @@ katz = alpha_centrality(graph, alpha = alpha, exo = 1)
 # plot graph
 ggraph(graph, layout = 'kk') +
 	geom_edge_link(aes(edge_alpha = value)) +
+<<<<<<< HEAD
+	geom_node_point(aes(size = str, colour = betweenness)) +
+=======
 	geom_node_point(aes(size = katz, colour = betweenness)) +
+>>>>>>> 2b297abe08918d8e5f299da1ec5b0dfa3d6253de
 	geom_node_label(aes(label = nodes$name), label.size = 0.25, repel = TRUE) +
 	theme_void()
 ```
