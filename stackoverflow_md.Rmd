@@ -27,7 +27,6 @@ library(lpSolve)
 library(lpSolveAPI)
 library(knitr)
 library(kableExtra)
-library(huxtable)
 
 setwd("/Users/magda/Desktop/ADS/stackoverflow-tags/")
 
@@ -248,16 +247,18 @@ btm = filter(chi, from != to) %>%
 
 top %>%
     kbl(align="c", caption='Top 5 Entries') %>%
-    kable_paper(bootstrap_options = c("striped","condensed"))
+    kable_material(c("striped", "hover", "condensed"), font_size = 20)
 
 btm %>%
     kbl(align="c", caption='Bottom 5 Entries') %>%
-    kable_paper(bootstrap_options = c("striped","condensed"))
+    kable_material(c("striped", "hover", "condensed"), font_size = 20)
 
 ```
 
 ## Community detection
-Through community detection techniques, we can identify groups of tags that are more strongly connected to each other...
+We can ask ourselves: is it possible to identify tags that refer to similar technologies through community detection? 
+
+We try to answer this question using **community detection**, a technique that helps us to identify groups of tags that are more strongly connected to each other.
 
 ```{r communities, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 # COMMUNITY DETECTION
@@ -276,8 +277,7 @@ ggraph(graph, layout = 'fr') +
 	scale_color_brewer(palette = "Paired")
 ```
 
-## Meaning of communities
-... and we realise that *nodes in the same group tend to represent technologies of similar domain*.
+The nodes assigned to Group 3 correspond to technologies that are commonly used for **Machine Learning applications**.
 
 ```{r groups, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
@@ -303,35 +303,32 @@ group8 <-
     as.data.frame() %>%
     filter(group==8) %>%
     select(name, group)
-```
 
-```{r group_display, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 group3 %>%
     kbl(align="c") %>%
-    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
-    kable_styling(position = "center")
-
-group7 %>%
-    kbl(align="c", caption='Angular2 is based on TypeScript') %>%
-    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
-    kable_styling(position = "center")
-
-group8 %>%
-    kbl(align="c", caption='Apple Development') %>%
-    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
-    kable_styling(position = "right")
+    kable_material(c("striped", "hover", "condensed"), font_size = 20)
 
 ```
 
-<!-- ##### Machine Learning applications -->
-<!-- Group 3 seems to comprehend technologies that are commonly used for ML applications. -->
-<!-- ##### Two similar languages -->
-<!-- **Angular 2** is based on **TypeScript**, thus it's easy to imagine why they are often found in the same post. -->
-<!-- ##### Apple development -->
-<!-- All of these technologies are used for the development of Apple products: **Objective-C** has been for a long time the primary programming language for writing software for **OS X** and **iOS**, while more recently **Swift** was introduced as an improvement of Objective-C. -->
+## Group 7 and 8
+Group 7 is instead composed by only two members, Angular2 and TypeScript: turns out that the former is a languaged based on latter!
 
-## Plotting communities
-We can plot communities with a histogram to compare the cardinality of each group.
+```{r group7, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+group7 %>%
+  kbl(align="c") %>%
+  kable_material(c("striped", "hover", "condensed"), font_size = 15)
+```
+
+The last example is Group 8, which comprehends technologies are used for the development of Apple products: **Objective-C** has been for a long time the primary programming language for writing software for **OS X** and **iOS**, while more recently **Swift** was introduced as an improvement of Objective-C.
+
+```{r group8, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+group8 %>%
+  kbl(align="c") %>%
+  kable_material(c("striped", "hover", "condensed"), font_size = 15)
+```
+
+## Size of communities
+We can plot communities with a histogram to compare the size of each group.
 
 ```{r histogram, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
@@ -347,7 +344,7 @@ ggplot(group_sizes, aes(x=group, y=n)) +
 ```
 
 ## Hierarchical Clustering
-A more advanced way of grouping together tags based on their domain is Hierarchical Clustering, which establishes a hierarchy of nodes based on the similarity score between them.
+A more advanced way of grouping together tags based on their domain is **Hierarchical Clustering**, which establishes a hierarchy of nodes based on the similarity score between them.
 
 For example:
 
@@ -370,18 +367,43 @@ S = D %*% t(A) %*% A %*% D
 D = 1-S
 
 # distance object
-d = as.dist(D)
+dist = as.dist(D)
 
 # average-linkage clustering method
-hc = hclust(d, method = "average")
+hc = hclust(dist, method = "average")
 
 plot(hc)
 ```
 
+## Similarity and Heterogeneity
+```{r, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+f = graph_from_adjacency_matrix(F, mode = "directed", weighted = TRUE)
+V(f)$name = 1:vcount(f)
+
+S = similarity(f)
+D = 1 - S
+het = heterogeneity(f, D)
+
+flows = mutate(flows, shannon_id = het$shannon, simpson_id = het$simpson, rao_id = het$rao)
+
+flows_id = select(flows, contains("_id"))
+corrplot.mixed(cor(flows_id), upper = "ellipse")
+```
+
+## Interdisciplinarity (or versatility)
+The five most interdisciplinary tags are
+```{r}
+x <- arrange(flows, desc(rao_id)) %>% 
+    select(tag, contains("_id")) %>%
+    head(5)
+
+x %>%
+  kbl(align="c") %>%
+  kable_material(c("striped", "hover", "condensed"), font_size = 15)
+```
 
 ## Power measures
-
-We use 
+We use power to...
 ```{r power, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 regularify(graph)
 I = diag(0.15, n_nodes)
