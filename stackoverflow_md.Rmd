@@ -178,11 +178,7 @@ I used three different centrality measures: degree centrality, betweenness centr
 
 ```{r centrality, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
-<<<<<<< HEAD
 # weighted degree
-=======
-# degree
->>>>>>> 2b297abe08918d8e5f299da1ec5b0dfa3d6253de
 str = strength(graph, v = V(graph), mode = "all", loops = FALSE)
 
 # betweenness
@@ -198,11 +194,7 @@ katz = alpha_centrality(graph, alpha = alpha, exo = 1)
 # plot graph
 ggraph(graph, layout = 'kk') +
 	geom_edge_link(aes(edge_alpha = value)) +
-<<<<<<< HEAD
-	geom_node_point(aes(size = str, colour = betweenness)) +
-=======
 	geom_node_point(aes(size = katz, colour = betweenness)) +
->>>>>>> 2b297abe08918d8e5f299da1ec5b0dfa3d6253de
 	geom_node_label(aes(label = nodes$name), label.size = 0.25, repel = TRUE) +
 	theme_void()
 ```
@@ -317,20 +309,26 @@ group8 <-
 ```
 
 ```{r group_display, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
-group3 %>%
-    kbl(align="c") %>%
-    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
-    kable_styling(position = "center")
 
-group7 %>%
-    kbl(align="c", caption='Angular2 is based on TypeScript') %>%
-    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
-    kable_styling(position = "center")
+df <- data.frame()
+list(group3,df, group7,df,group8) %>%
+    kbl(align="lc", caption='On the left we have some caption, in the middel Angular2 is based on TypeScript and on the right Apple Development') %>%
+    kable_styling(bootstrap_options = c("striped","condensed"), full_width = F, position = "left")
 
-group8 %>%
-    kbl(align="c", caption='Apple Development') %>%
-    kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
-    kable_styling(position = "right")
+# group3 %>%
+#     kbl(align="c") %>%
+#     kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
+#     kable_styling(position = "center")
+# 
+# group7 %>%
+#     kbl(align="c", caption='Angular2 is based on TypeScript') %>%
+#     kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
+#     kable_styling(position = "center")
+# 
+# group8 %>%
+#     kbl(align="c", caption='Apple Development') %>%
+#     kable_paper(bootstrap_options = "striped", full_width = FALSE) %>%
+#     kable_styling(position = "right")
 
 ```
 
