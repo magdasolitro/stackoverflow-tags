@@ -408,7 +408,7 @@ plot(hc)
 
 ## Similarity and Heterogeneity
 
-We investigate also the similarity between different tags with some global similarity measure and show the results in a correlation plot.
+We investigate also the similarity of different tags with some global similarity measure and show the results in a correlation plot.
 
 ```{r, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 f = graph_from_adjacency_matrix(F, mode = "directed", weighted = TRUE)
@@ -424,11 +424,11 @@ flows_id = select(flows, contains("_id"))
 corrplot.mixed(cor(flows_id), upper = "ellipse")
 ```
 
-## Interdisciplinarity (or versatility)
+## Most interdisciplinary (or versatile)
 
 We show the 5 most interdisciplinary tags ordering the results by the **Shannon entropy**:
 
-```{r}
+```{r top5, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 x <- arrange(flows, desc(shannon_id)) %>% 
     select(tag, contains("_id")) %>%
     head(5)
@@ -444,6 +444,31 @@ Interestingly, "a web analysis indicates that [**jQuery**] is the most widely de
 
 All the most versatile technologies as based on JavaScript!
 
+## Least interdisciplinary (or versatile)
+
+The 5 least interdisciplinary tags are the following:
+
+```{r bottom5, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+y <- arrange(flows, shannon_id) %>% 
+    select(tag, contains("_id")) %>%
+    head(5)
+
+y %>%
+  kbl(align="c") %>%
+  kable_material(c("striped", "hover", "condensed"), font_size = 15)
+```
+
+This data make sense *according to the data we have*, because those nodes find themselves in the outskirts of the graph...
+
+## Another look to communities...
+
+```{r community_graph, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+ggraph(graph, layout = 'fr') +
+    geom_edge_link() +
+	geom_node_point(aes(size = 1, colour = community)) +
+	geom_node_text(aes(label = nodes$name), repel = TRUE) +
+	scale_color_brewer(palette = "Paired")
+```
 
 ```{r power, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 # regularify(graph)
