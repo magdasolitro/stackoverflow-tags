@@ -81,65 +81,65 @@ heterogeneity = function(g, D, mode = "col") {
 }
 
 regularify = function (g) {
-  n = vcount(g)
-  m = ecount(g)
-  E = get.edges(g, E(g))
-  B = matrix(0, nrow = n, ncol = m)
-  # build incidence matrix
-  for (i in 1:m) {
-    B[E[i,1], i] = 1
-    B[E[i,2], i] = 1
-  }  
-  # objective function
-  obj = rep(0, m + 1)
-  # constraint matrix
-  con = cbind(B, rep(-1, n))
-  # direction of constraints
-  dir = rep("=", n)
-  # right hand side terms
-  rhs = -degree(g)
-  # solve the LP problem
-  sol = lp("max", obj, con, dir, rhs)
-  # get solution
-  if (sol$status == 0) {
-    s = sol$solution
-    # weights
-    w = s[1:m] + 1
-    # weighted degree
-    d = s[m+1]
-  }
-  # return the solution
-  if (sol$status == 0) {
-    return(list(weights = w, degree = d)) 
-  }
-  else {
-    return(NULL)   
-  }
+    n = vcount(g)
+    m = ecount(g)
+    E = get.edges(g, E(g))
+    B = matrix(0, nrow = n, ncol = m)
+    # build incidence matrix
+    for (i in 1:m) {
+        B[E[i,1], i] = 1
+        B[E[i,2], i] = 1
+    }  
+    # objective function
+    obj = rep(0, m + 1)
+    #constraint matrix
+    con = cbind(B, rep(-1, n))
+    # direction of constraints
+    dir = rep("=", n)
+    # right hand side terms
+    rhs = -degree(g)
+    # solve the LP problem
+    sol = lp("max", obj, con, dir, rhs)
+    # get solution
+    if (sol$status == 0) {
+        s = sol$solution
+        # weights
+        w = s[1:m] + 1
+        # weighted degree
+        d = s[m+1]
+    }
+    # return the solution
+    if (sol$status == 0) {
+        return(list(weights = w, degree = d)) 
+    }
+    else {
+        return(NULL)   
+    }
 }
 
 power = function(A, t) {
-  n = dim(A)[1];
-  # x_2k
-  x0 = rep(0, n);
-  # x_2k+1
-  x1 = rep(1, n);
-  # x_2k+2
-  x2 = rep(1, n);
-  diff = 1
-  eps = 1/10^t;
-  iter = 0;
-  while (diff > eps) {
-    x0 = x1;
-    x1 = x2;
-    x2 = (1/x2) %*% A;
-    diff = sum(abs(x2 - x0));
-    iter = iter + 1;
-  } 
-  # it holds now: alpha x2 = (1/x2) A
-  alpha = ((1/x2) %*% A[,1]) / x2[1];
-  # hence sqrt(alpha) * x2 = (1/(sqrt(alpha) * x2)) A
-  x2 = sqrt(alpha) %*% x2;
-  return(list(vector = as.vector(x2), iter = iter))
+    n = dim(A)[1];
+    # x_2k
+    x0 = rep(0, n);
+    # x_2k+1
+    x1 = rep(1, n);
+    # x_2k+2
+    x2 = rep(1, n);
+    diff = 1
+    eps = 1/10^t;
+    iter = 0;
+    while (diff > eps) {
+        x0 = x1;
+        x1 = x2;
+        x2 = (1/x2) %*% A;
+        diff = sum(abs(x2 - x0));
+        iter = iter + 1;
+    } 
+    # it holds now: alpha x2 = (1/x2) A
+    alpha = ((1/x2) %*% A[,1]) / x2[1];
+    # hence sqrt(alpha) * x2 = (1/(sqrt(alpha) * x2)) A
+    x2 = sqrt(alpha) %*% x2;
+    return(list(vector = as.vector(x2), iter = iter))
 } 
 
 ```
@@ -157,17 +157,13 @@ graph = tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
 
 ```
 
-## A network of tags used in StackOverflow
-
-The network we analyse represents the usage of tags on StackOverflow, a popular forum for computer programmers. Tags are keywords that help users to find questions and answers related to a specific technology or topic.
+## A network of tags used in StackOverflow: dataset
 
 Our dataset is structured in two files:
 
 -   *stack_network_nodes.csv* is a csv file containing information about the nodes of the network. Each node is associated to a specific tag.
 
 -   *stack_network_links.csv* is a csv file containing information about the links of the network. An edge between two nodes means that the those tags can be found in the same post. The weight of the edge is a measure of how often those tags are used together.
-
-The goal of my analysis is to deduce information about the technologies represented by tags based on how they relate to each other in the network.
 
 ## The network
 
@@ -180,10 +176,6 @@ ggraph(graph, layout = 'fr') +
 ```
 
 ## Centrality measures
-
-Centrality measures are a way of determining the "importance" of a node in the network based on how it connects to its neighbours.
-
-I used three different centrality measures: degree centrality, betweenness centrality, and Katz centrality.
 
 ```{r centrality, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
@@ -210,11 +202,23 @@ ggraph(graph, layout = 'fr') +
 
 The **size** of a node is not related to the **centrality** of a node in the network.
 
+## Compare degree centrality, Katz centrality and betweenness
+
+We compare the different centrality measures:
+
+```{r correlation, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+M = cbind(degree = str,
+          betweenness = betweenness,
+          katz = katz)
+
+(correlation = cor(M))
+
+corrplot(correlation, method="ellipse")
+```
+
 ## Comparison with the expected flow
 
 An alternative way of evaluating how meaningful is a link between two nodes is two compare flow of the network with the flow that can be found in a network with the same nodes, where the links are distributed randomly.
-
-## Comparison with the expected flow
 
 ```{r exp_flow, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 n_nodes = vcount(graph)
@@ -325,17 +329,17 @@ group8 <-
 
 ## Some examples...
 
-The nodes assigned to Group 3 correspond to technologies that are commonly used for **Machine Learning applications**. Among these, we find also **R**, the language we used for this project, and **Matlab**, one of the most common alternatives to R.
+<!--#The nodes assigned to Group 3 correspond to technologies that are commonly used for Machine Learning applications. Among these, we find also R, the language we used for this project, and Matlab, one of the most common alternatives to R.  -->
 
 ```{r group3, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
-group3 %>%
-    kbl(align="c") %>%
-    kable_material(c("striped", "hover", "condensed"), font_size = 15)
+# group3 %>%
+#     kbl(align="c") %>%
+#     kable_material(c("striped", "hover", "condensed"), font_size = 15)
 
 ```
 
-Group 7 is instead composed by only two members, **Angular2** and **TypeScript**: turns out that the former is a language based on latter!
+Group 7 is composed by only two members, **Angular2** and **TypeScript**: turns out that the former is a language based on latter!
 
 ```{r group7, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
@@ -361,15 +365,15 @@ We can plot communities with a histogram to compare the size of each group.
 
 ```{r histogram, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 
-# group together nodes that belong to the same group and count elements
+group together nodes that belong to the same group and count elements
 group_sizes <-
 	nodes %>%
 	group_by(group) %>%
 	count()
 
 # plot histogram
-ggplot(group_sizes, aes(x=group, y=n)) + 
-	geom_col(aes(fill = as.factor(group))) + 
+ggplot(group_sizes, aes(x=group, y=n)) +
+	geom_col(aes(fill = as.factor(group))) +
     theme(axis.text.x = element_blank())
 ```
 
@@ -377,10 +381,7 @@ ggplot(group_sizes, aes(x=group, y=n)) +
 
 A more advanced way of grouping together tags based on their domain is **Hierarchical Clustering**, which establishes a hierarchy of nodes based on the similarity score between them.
 
-For example:
-
--   50 is Ubuntu and 56 is Unix
--   8 is C and 9 is C++
+For example: 5, 12, 47, 6, 23 are the IDs of nodes belonging to group 8 (Apple development tags).
 
 ```{r hierachical_clust, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 # use hierarchical clustering to group tags into macroareas
@@ -404,11 +405,12 @@ dist = as.dist(D)
 hc = hclust(dist, method = "average")
 
 plot(hc)
+clusters.list = rect.hclust(hc, h=0.6, x=(10:10), border="red")
 ```
 
-## Similarity and Heterogeneity
+## Heterogeneity
 
-We investigate also the similarity of different tags with some global similarity measure and show the results in a correlation plot.
+We investigate also the heterogeneity of different tags with some global similarity measure and show the results in a correlation plot.
 
 ```{r, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 f = graph_from_adjacency_matrix(F, mode = "directed", weighted = TRUE)
@@ -429,11 +431,11 @@ corrplot.mixed(cor(flows_id), upper = "ellipse")
 We show the 5 most interdisciplinary tags ordering the results by the **Shannon entropy**:
 
 ```{r top5, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
-x <- arrange(flows, desc(shannon_id)) %>% 
+corr2 <- arrange(flows, desc(shannon_id)) %>% 
     select(tag, contains("_id")) %>%
     head(5)
 
-x %>%
+corr2 %>%
   kbl(align="c") %>%
   kable_material(c("striped", "hover", "condensed"), font_size = 15)
 ```
@@ -464,29 +466,8 @@ This data make sense *according to the data we have*, because those nodes find t
 
 ```{r community_graph, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 ggraph(graph, layout = 'fr') +
-    geom_edge_link() +
+	geom_edge_link() +
 	geom_node_point(aes(size = 1, colour = community)) +
 	geom_node_text(aes(label = nodes$name), repel = TRUE) +
 	scale_color_brewer(palette = "Paired")
-```
-
-```{r power, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
-# regularify(graph)
-# I = diag(0.15, n_nodes)
-# (AI = A + I)
-```
-
-```{r power2, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
-#power = power(AI, 6)[1]
-
-# graph %>%
-#     activate(nodes) %>%
-#     right_join(tibble(1:62, as_tibble(power)) %>% rename(id = `1:62`, power = vector)) %>%
-#     mutate(membership = membership(groups)[name]) %>%
-#     activate(edges) %>%
-#     mutate(betweenness = centrality_edge_betweenness()) %>%
-#     ggraph(layout = 'fr') +
-#     geom_edge_arc(aes(alpha = betweenness, colour = as.factor(membership(groups))), strength = 0.05) +
-#     geom_node_point(aes(size = power, colour = as.factor(membership(groups)))) +
-#     geom_node_text(aes(label = name), repel = T)
 ```
