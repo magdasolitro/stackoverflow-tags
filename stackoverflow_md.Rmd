@@ -206,14 +206,29 @@ The **size** of a node is not related to the **centrality** of a node in the net
 
 We compare the different centrality measures:
 
-```{r correlation, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+```{r correlation, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, }
 M = cbind(degree = str,
           betweenness = betweenness,
-          katz = katz)
+          katz = katz,
+          size = nodes$nodesize)
 
-(correlation = cor(M))
+corrplot(cor(M), method="number")
 
-corrplot(correlation, method="ellipse")
+```
+
+## Highest betweenness score
+
+What technologies are more important to connect different parts of the graph?
+
+```{r, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+betweenness_df = as.data.frame(betweenness)
+
+top_b <- arrange(betweenness_df, desc(betweenness)) %>% 
+    head(5)
+
+top_b %>%
+    kbl(align="c") %>%
+    kable_material(c("striped", "hover", "condensed"), font_size = 20)
 ```
 
 ## Comparison with the expected flow
@@ -250,6 +265,7 @@ E = (R %*% O %*% C) / n
 C = (F - E) / sqrt(E) 
 
 g = graph_from_adjacency_matrix(C, mode = "plus", weighted = TRUE)
+
 V(g)$name = 1:vcount(g)
 
 chi = as_tibble(as_data_frame(g)) %>%
@@ -263,15 +279,26 @@ top = filter(chi, from != to) %>%
 	head(5)
 
 # bottom 5 different discipline pairs
-null = filter(chi, from != to) %>% 
+btm = filter(chi, from != to) %>% 
     arrange(weight) %>%
     head(5)
 
 top %>%
     kbl(align="c", caption='Top 5 Entries') %>%
     kable_material(c("striped", "hover", "condensed"), font_size = 20)
+```
 
-null %>%
+These result were expected...
+
+-   "**Perl** gained widespread popularity [...], in part due to its powerful **regular expression** and string parsing abilities" [Source: Wikipedia]
+
+-   **Docker** is written in **Go**
+
+-   **Apache-Spark** is written in **Scala**
+
+```{r}
+
+btm %>%
     kbl(align="c", caption='Bottom 5 Entries') %>%
     kable_material(c("striped", "hover", "condensed"), font_size = 20)
 
@@ -329,16 +356,6 @@ group8 <-
 
 ## Some examples...
 
-<!--#The nodes assigned to Group 3 correspond to technologies that are commonly used for Machine Learning applications. Among these, we find also R, the language we used for this project, and Matlab, one of the most common alternatives to R.  -->
-
-```{r group3, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
-
-# group3 %>%
-#     kbl(align="c") %>%
-#     kable_material(c("striped", "hover", "condensed"), font_size = 15)
-
-```
-
 Group 7 is composed by only two members, **Angular2** and **TypeScript**: turns out that the former is a language based on latter!
 
 ```{r group7, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
@@ -357,24 +374,6 @@ group8 %>%
     kbl(align="c") %>%
     kable_material(c("striped", "hover", "condensed"), font_size = 15)
 
-```
-
-## Size of communities
-
-We can plot communities with a histogram to compare the size of each group.
-
-```{r histogram, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
-
-group together nodes that belong to the same group and count elements
-group_sizes <-
-	nodes %>%
-	group_by(group) %>%
-	count()
-
-# plot histogram
-ggplot(group_sizes, aes(x=group, y=n)) +
-	geom_col(aes(fill = as.factor(group))) +
-    theme(axis.text.x = element_blank())
 ```
 
 ## Hierarchical Clustering
@@ -420,7 +419,10 @@ S = similarity(f)
 D = 1 - S
 het = heterogeneity(f, D)
 
-flows = mutate(flows, shannon_id = het$shannon, simpson_id = het$simpson, rao_id = het$rao)
+flows = mutate(flows, 
+               shannon_id = het$shannon, 
+               simpson_id = het$simpson, 
+               rao_id = het$rao)
 
 flows_id = select(flows, contains("_id"))
 corrplot.mixed(cor(flows_id), upper = "ellipse")
@@ -471,3 +473,13 @@ ggraph(graph, layout = 'fr') +
 	geom_node_text(aes(label = nodes$name), repel = TRUE) +
 	scale_color_brewer(palette = "Paired")
 ```
+
+## Conclusions
+
+From the analysis emerged the following facts:
+
+-   Through the centrality measures, we discovered that the number of posts in which a tag appears is not strongly related to the centrality of the tag in the network,
+
+-   Languages based on **JavaScript** are extremely versatile,
+
+-   Nodes in the same community can be similar technologies, but can also be different technologies that work well together!
