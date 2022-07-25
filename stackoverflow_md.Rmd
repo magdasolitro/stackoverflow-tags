@@ -331,13 +331,6 @@ ggraph(graph, layout = 'fr') +
 
 options(knitr.table.format = "html")
 
-group3 <-
-	nodes %>%
-	group_by(group) %>%
-    as.data.frame() %>%
-    filter(group==3) %>%
-    select(name, group)
-
 group7 <-
 	nodes %>%
 	group_by(group) %>%
@@ -380,7 +373,11 @@ group8 %>%
 
 A more advanced way of grouping together tags based on their domain is **Hierarchical Clustering**, which establishes a hierarchy of nodes based on the similarity score between them.
 
-For example: 5, 12, 47, 6, 23 are the IDs of nodes belonging to group 8 (Apple development tags).
+For example:
+
+-   5, 12, 47, 6, 23 are the IDs of nodes belonging to group 8 (Apple development tags).
+
+-   50 is Ubuntu, 56 is Unix
 
 ```{r hierachical_clust, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 # use hierarchical clustering to group tags into macroareas
@@ -407,11 +404,17 @@ plot(hc)
 clusters.list = rect.hclust(hc, h=0.6, x=(10:10), border="red")
 ```
 
-## Heterogeneity
+... But doesn't always work:
 
-We investigate also the heterogeneity of different tags with some global similarity measure and show the results in a correlation plot.
+-   16 is MySQL, 54 is PostgreSQL
 
-```{r, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+## Most interdisciplinary (or versatile)
+
+We use measures of **heterogeneity** to evaluate what tags are more versatile.
+
+The table shows the 5 most interdisciplinary tags according to the **Shannon entropy**:
+
+```{r top5, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 f = graph_from_adjacency_matrix(F, mode = "directed", weighted = TRUE)
 V(f)$name = 1:vcount(f)
 
@@ -424,15 +427,6 @@ flows = mutate(flows,
                simpson_id = het$simpson, 
                rao_id = het$rao)
 
-flows_id = select(flows, contains("_id"))
-corrplot.mixed(cor(flows_id), upper = "ellipse")
-```
-
-## Most interdisciplinary (or versatile)
-
-We show the 5 most interdisciplinary tags ordering the results by the **Shannon entropy**:
-
-```{r top5, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
 corr2 <- arrange(flows, desc(shannon_id)) %>% 
     select(tag, contains("_id")) %>%
     head(5)
@@ -472,6 +466,14 @@ ggraph(graph, layout = 'fr') +
 	geom_node_point(aes(size = 1, colour = community)) +
 	geom_node_text(aes(label = nodes$name), repel = TRUE) +
 	scale_color_brewer(palette = "Paired")
+```
+
+## Comparison of heterogeneity measures
+
+```{r, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE}
+
+flows_id = select(flows, contains("_id"))
+corrplot.mixed(cor(flows_id), upper = "ellipse")
 ```
 
 ## Conclusions
